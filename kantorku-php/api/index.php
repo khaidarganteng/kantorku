@@ -29,6 +29,7 @@ if ($p === 'login' || $p === 'daftar') {
     $err = '';
     if ($post) {
         try {
+            siapkan($MODUL);
             $email = strtolower(trim((string)($_POST['email'] ?? ''))); $pw = (string)($_POST['password'] ?? '');
             if ($daftar) {
                 $nama = trim((string)($_POST['nama'] ?? ''));
@@ -51,7 +52,7 @@ if ($p === 'login' || $p === 'daftar') {
                 if ($u && password_verify($pw, $u['password_hash'])) { set_login((int)$u['id']); go('/'); }
                 $err = 'Email atau kata sandi salah.';
             }
-        } catch (Throwable $e) { $err = 'Database belum siap. Buka /?p=install&key=APP_SECRET dulu.'; }
+        } catch (Throwable $e) { $err = 'Database belum siap: ' . sebab($e); }
     }
     echo head($daftar ? 'Daftar' : 'Masuk'), '<div class="wrap login"><div class="hero" style="text-align:center"><div style="font-size:48px">🌸</div><h2>Kantorku Imut</h2><div>',
       $daftar ? 'Buat akun barumu, gratis!' : 'Masuk dulu ya, calon sekretaris hebat!', '</div></div><div class="card">',
@@ -210,6 +211,6 @@ function buka(r){frm.reset();rid.value=r?r.id:0;
 
 } catch (Throwable $e) {
     http_response_code(500);
-    $pesan = str_contains($e->getMessage(), 'does not exist') ? 'Tabel belum dibuat. Buka /?p=install&key=APP_SECRET sekali dulu.' : 'Terjadi kesalahan koneksi database. Periksa Environment Variables di Vercel.';
+    $pesan = sebab($e);
     echo head('Oops'), '<div class="wrap login"><div class="hero"><h2>Oops 🥺</h2><div>', h($pesan), '</div></div></div></body></html>';
 }
