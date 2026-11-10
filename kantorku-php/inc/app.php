@@ -197,3 +197,27 @@ function ringkasKas(): array {
     $o = (int)db()->query("SELECT COALESCE(SUM(jumlah),0) FROM kas WHERE jenis='Pengeluaran' AND user_id=" . uid())->fetchColumn();
     return [$i, $o, $i - $o];
 }
+
+/* Penjelasan penyebab gagal koneksi (tanpa membocorkan nilai rahasia) */
+function sebab(Throwable $e): string {
+    foreach (['DB_HOST', 'DB_USER', 'DB_PASS'] as $k)
+        if (env($k) === '') return $k . ' kosong: variabel belum terbaca. Simpan di Vercel lalu Redeploy.';
+    if (str_contains(env('DB_HOST'), 'host-pooler') || str_contains(env('DB_USER'), 'PROJECTREF') || str_contains(env('DB_PASS'), 'kata-sandi-database'))
+        return 'Masih ada teks contoh di DB_HOST, DB_USER, atau DB_PASS. Ganti dengan nilai asli dari Supabase.';
+    $m = $e->getMessage();
+    if (str_contains($m, 'could not find driver')) return 'Driver Postgres (pdo_pgsql) tidak tersedia di server ini.';
+    if (str_contains($m, 'password authentication failed')) return 'DB_PASS salah. Reset kata sandi di Supabase lalu perbarui di Vercel.';
+    if (str_contains($m, 'Tenant or user not found')) return 'DB_USER atau DB_HOST tidak cocok dengan project Supabase.';
+    if (str_contains($m, 'translate host') || str_contains($m, 'Name or service')) return 'DB_HOST tidak dikenali. Salin ulang dari Supabase.';
+    if (str_contains($m, 'timeout') || str_contains($m, 'timed out') || str_contains($m, 'unreachable')) return 'Server database tidak terjangkau (cek DB_HOST dan DB_PORT 6543).';
+    return 'Kesalahan database lain (kode ' . $e->getCode() . ').';
+}
+
+/* Buat tabel otomatis kalau belum ada, jadi tidak perlu alamat install */
+function siapkan(array $M): void {
+    try { db()->query('SELECT 1 FROM users LIMIT 1'); }
+    catch (Throwable $e) {
+        if (str_contains($e->getMessage(), '42P01') || str_contains($e->getMessage(), 'does not exist')) install($M);
+        else throw $e;
+    }
+}
